@@ -1,3 +1,5 @@
+const THREE = require('./three')
+
 const now = () => typeof performance !== 'undefined' ? performance.now() : Date.now()
 
 const rateLimit = (fn, ms = 1000) => {
@@ -87,8 +89,37 @@ const rotateAroundWorldAxis = (object, axis, radians) => {
   object.rotation.setFromRotationMatrix( object.matrix )
 }
 
+const flatten = (obj, stage) => {
+  let scene = obj
+  obj.updateMatrix()
+  obj.updateWorldMatrix()
+  while (scene.parent) scene = scene.parent
+  THREE.SceneUtils.detach(obj, obj.parent, scene)
+  THREE.SceneUtils.attach(obj, scene, stage)
+}
+
+const tripleProduct = (a,b,c) => a.clone().dot(new THREE.Vector3().cross(b,c))
+
+const _isCoPlanar = (a, b, c, d) => {
+  const ab = b.clone().sub(a)
+  const ac = c.clone().sub(a)
+  const ad = d.clone().sub(a)
+  return tripleProduct(ab, ac, ad) === 0
+}
+
+const isCoPlanar = (vertices) => {
+  if (vertices.length >= 4) {
+    for (i = 0; i <= vertices.length - 4; i++) {
+      const slice = vertices.slice(i, i + 4)
+      if (!_isCoPlanar(...slice)) return false
+    }
+  }
+  return true
+}
+
 module.exports = {
   rateLimit, rateMeasure, sum, sample, now,
   distance, distance2, min, max, PHI,
-  rotateAroundWorldAxis, rotateAroundObjectAxis
+  rotateAroundWorldAxis, rotateAroundObjectAxis,
+  flatten, isCoPlanar
 }

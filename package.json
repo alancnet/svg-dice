@@ -31,6 +31,9 @@
     "webpack-livereload-plugin": "^2.2.0"
   },
   "dependencies": {
-    "three": "^0.99.0"
+    "ThreeCSG": "https://github.com/alancnet/three-csg",
+    "oimo": "^1.0.9",
+    "three": "^0.99.0",
+    "webpack-pwa-manifest": "^4.0.0"
   }
 }

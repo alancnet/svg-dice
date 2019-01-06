@@ -1,5 +1,5 @@
-const THREE = require('three')
-const { distance, min, max, PHI } = require('./util')
+require('@alancnet/three-csg/src/index')
+const { distance, min, max, PHI, flatten } = require('./util')
 const origin = require('./origin')
 
 const G = 1.618
@@ -90,10 +90,11 @@ const d20 = ({
   
   const dieMesh = new THREE.Mesh(dieGeo, material)
   obj.die = dieMesh
-  obj.add(dieMesh)
+  //obj.add(dieMesh)
   obj.origins = []
   obj.lines = []
 
+  let dieCsg = THREE.CSG.fromMesh(dieMesh).setColor([0x22,0x88,0xaa,0])
 
   const loader = new THREE.FontLoader()
   obj.die.geometry.faces.forEach((face, f) => {
@@ -124,15 +125,23 @@ const d20 = ({
 
     org.up.copy(va)
     org.lookAt(center.clone().multiplyScalar(2))
+    org.updateWorldMatrix(false, true) // Save rotation to objects so when we move them later, it retains its oritentation
 
     const textMaterial = new THREE.MeshLambertMaterial({
       color: 0xffffff,
       flatShading: true
     })
 
-    loader.load('three/examples/fonts/droid/droid_sans_regular.typeface.json', font => {
+    // loader.load('three/examples/fonts/droid/droid_sans_regular.typeface.json', font => {
       const n = f + 1
-      const textGeo = new THREE.TextGeometry(n.toString(), {
+
+      const textGeo = 
+        THREE.CSG.toGeometry(THREE.CSG.fromText(n.toString(), {
+          weight: 4,
+          height: 2,
+          size: .03
+        }))
+      /*new THREE.TextGeometry(n.toString(), {
         font: font,
         size: .040,
         height: .01,
@@ -141,18 +150,17 @@ const d20 = ({
         bevelThickness: 0.01,
         bevelSize: 0.0008,
         bevelSegments: 5
-      });
+      });*/
     
       const textMesh = new THREE.Mesh(
         textGeo,
         textMaterial
       )
-
+      
       const textSize = new THREE.Vector3
       textGeo.computeBoundingBox()
       textGeo.boundingBox.getSize(textSize)
       const textCenter = textSize.clone().multiplyScalar(-.5)
-      console.log(textMesh, textGeo)
       textMesh.position.sub(textGeo.boundingBox.min)
       textMesh.position.add(textCenter)
 
@@ -163,19 +171,51 @@ const d20 = ({
         underlineMesh.position.setY(-.0175)
         textMesh.position.setY(textMesh.position.y + 0.01)
         org.add(underlineMesh)
-      }
 
-      // const box = new THREE.Box3Helper(textGeo.boundingBox)
-      // textMesh.add(box)
+        underlineMesh.updateMatrix()
+        flatten(underlineMesh, obj)
+        const underlineCsg = THREE.CSG.fromMesh(underlineMesh).setColor([255,255,255,128])
+        dieCsg = dieCsg.subtract(underlineCsg)
+        obj.remove(underlineMesh)
+      }
+      textMesh.updateMatrix()
+
+      const box = new THREE.Box3Helper(textGeo.boundingBox)
+      textMesh.add(box)
 
 
       org.add(textMesh)
+      flatten(textMesh, obj)
+      const textCsg = THREE.CSG.fromMesh(textMesh).setColor([255,255,255,1])
+      dieCsg = dieCsg ? dieCsg.subtract(textCsg) : textCsg; //dieCsg.union(textCsg)
+      obj.remove(textMesh)
+      
     })
 
+    // const csgGeo = THREE.CSG.toGeometry(dieCsg)
+    // const dieMaterial = new THREE.MeshLambertMaterial({
+    //   color: 0x2288aa
+    // })
+    // const textMaterial = new THREE.MeshLambertMaterial({
+    //   color: 0xeeeeee
+    // })
+    // const csgMaterials = [dieMaterial, textMaterial]
+    // csgGeo.faces.forEach((face, i) => {
+    //   if (i < 20) {
+    //     face.materialIndex = 0
+    //   } else {
+    //     face.materialIndex = 1
+    //   }
+    // })
 
-  })
+
+    const csgMesh = THREE.CSG.toMesh(dieCsg, THREE.MeshPhysicalMaterial)
+    obj.add(csgMesh)
+    //obj.add(dieMesh)
+  //})
   return obj
 }
+
 module.exports = {
   icosahedron,
   d20
